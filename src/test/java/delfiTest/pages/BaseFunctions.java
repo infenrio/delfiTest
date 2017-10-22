@@ -54,6 +54,15 @@ public class BaseFunctions {
         return driver.findElements(locator);
     }
 
+    public boolean isPresentElement(By locator) {
+        LOGGER.info("Checking whether the element is present.");
+        List<WebElement> elements = driver.findElements(locator);
+        if(elements.size() != 0) {
+            return true;
+        }
+        return false;
+    }
+
     public void clickElement(By locator) {
         LOGGER.info("Clicking element.");
         driver.findElement(locator).click();

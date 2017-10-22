@@ -2,6 +2,7 @@ package delfiTest.pages;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.Assert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
@@ -11,12 +12,16 @@ public class MobileArticlePage {
 
     private static final Logger LOGGER = LogManager.getLogger(MobileArticlePage.class);
 
+    private static final By ARTICLE = By.id("article");
     private static final By TITLE = By.xpath("//h1");
     private static final By COMMENT_COUNT = By.xpath("//div[@class='article-title']/a[@class='commentCount']");
     private static final By COMMENT_BUTTON = By.xpath("//a[contains(@href, 'com=1')]");
 
     public MobileArticlePage(BaseFunctions baseFunctions) {
         this.baseFunctions = baseFunctions;
+
+        LOGGER.info("Checking that article is present.");
+        Assert.assertTrue("Article is not present.", baseFunctions.isPresentElement(ARTICLE));
     }
 
     public String getTitle() {

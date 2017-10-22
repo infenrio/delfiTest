@@ -2,6 +2,7 @@ package delfiTest.pages;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.Assert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
@@ -11,12 +12,16 @@ public class DesktopArticlePage {
 
     private static final Logger LOGGER = LogManager.getLogger(DesktopArticlePage.class);
 
+    private static final By ARTICLE = By.id("article");
     private static final By TITLE = By.xpath("//h1[@class='article-title']");
     private static final By COMMENT_COUNT = By.xpath("//h1[@class='article-title']/following-sibling::*");
     private static final By COMMENT_BUTTON = By.xpath("//a[contains(@class, 'comment-add-form-listing-url-registered')]");
 
     public DesktopArticlePage(BaseFunctions baseFunctions) {
         this.baseFunctions = baseFunctions;
+
+        LOGGER.info("Checking that article is present.");
+        Assert.assertTrue("Article is not present.", baseFunctions.isPresentElement(ARTICLE));
     }
 
     public String getTitle() {

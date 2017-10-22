@@ -2,6 +2,7 @@ package delfiTest.pages;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.Assert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
@@ -11,12 +12,14 @@ public class DesktopHomePage {
 
     private static final Logger LOGGER = LogManager.getLogger(DesktopHomePage.class);
 
+    private static final By TOP_ARTICLES = By.id("column1-top");
     private static final By FOLLOWING_SIBLING = By.xpath("following-sibling::*");
 
     public DesktopHomePage(BaseFunctions baseFunctions) {
         this.baseFunctions = baseFunctions;
 
-
+        LOGGER.info("Checking that top articles are present.");
+        Assert.assertTrue("Top articles are not present.", baseFunctions.isPresentElement(TOP_ARTICLES));
     }
 
     public String getArticleTitle(int articleNumber) {
