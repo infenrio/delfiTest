@@ -1,632 +1,387 @@
 package delfiTest;
 
+import delfiTest.pages.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.util.ArrayList;
 
 
 public class NewsCommentsTest {
+    BaseFunctions baseFunctions = new BaseFunctions();
+
     private static final Logger LOGGER = LogManager.getLogger(NewsCommentsTest.class);
 
-    private String DESKTOP_PAGE = "http://www.delfi.lv";
-    private String MOBILE_PAGE = "http://m.delfi.lv";
-
-    private static final By FOLLOWING_SIBLING = By.xpath("following-sibling::*");
-    private static final By REGISTERED_COMMENTS = By.xpath("//a[contains(@class, 'comment-thread-switcher-list-a-reg')]/span");
-    private static final By ANONYMOUS_COMMENTS = By.xpath("//a[contains(@class, 'comment-thread-switcher-list-a-anon')]/span");
-    private static final By ARTICLE_TITLE_DESKTOP = By.xpath("//h1[@class='article-title']");
+    private String DESKTOP_PAGE_URL = "http://www.delfi.lv";
+    private String MOBILE_PAGE_URL = "http://m.delfi.lv";
 
     private static final int ARTICLES_TO_CHECK = 5;
 
-    private static final String ARTICLE_FOR_TEST = "Nedēļas trakumi: Maliginu mīlas gals, Ušakovas šarms un kaislības gazikā";
+    private static final String ARTICLE_FOR_TEST = "Latvijas tuvumā manīta Krievijas armijas zemūdene un kuģis";
 
     @Test
     public void newsNamesAndCommentCountTest() {
-        System.setProperty("webdriver.gecko.driver", "C:/geckodriver.exe");
-        WebDriver driver = new FirefoxDriver();
-//        driver.manage().window().maximize();
-        WebDriverWait wait = new WebDriverWait(driver, 10);
-        WebElement element;
-        String elementText;
         ArrayList<String> newsTitlesDesktop = new ArrayList<String>();
         ArrayList<String> newsTitlesMobile = new ArrayList<String>();
         boolean titleCheckIsOk = false;
-        LOGGER.info("Try up to 5 times to check whether first 5 articles match on desktop and mobile.");
-        for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
+
+        LOGGER.info("Trying up to 5 times to check whether first 5 articles match on desktop and mobile home pages.");
+        for (int compareTryCount = 1; compareTryCount <= 5; compareTryCount++) {
             LOGGER.info("Performing try number: " + compareTryCount);
-            driver.get(DESKTOP_PAGE);
-            for (int i = 1; i <= ARTICLES_TO_CHECK + 5; i++) {
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("(//h3/a[@class='top2012-title'])[" + i + "]")));
-                newsTitlesDesktop.add(element.getText());
+            LOGGER.info("Opening desktop home page.");
+            baseFunctions.openUrl(DESKTOP_PAGE_URL);
+            DesktopHomePage desktopHomePage = new DesktopHomePage(baseFunctions);
+            for (int i = 1; i <= ARTICLES_TO_CHECK + 1; i++) {
+                LOGGER.info("Remembering title of the article Nr: " + i);
+                newsTitlesDesktop.add(desktopHomePage.getArticleTitle(i));
             }
-            driver.get(MOBILE_PAGE);
-            for (int i = 1; i <= ARTICLES_TO_CHECK + 5; i++) {
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("(//div[@class='md-mosaic-title']/a[@class='md-scrollpos'])[" + i + "]")));
-                newsTitlesMobile.add(element.getText());
+            LOGGER.info("Opening mobile home page.");
+            baseFunctions.openUrl(MOBILE_PAGE_URL);
+            MobileHomePage mobileHomePage = new MobileHomePage(baseFunctions);
+            for (int i = 1; i <= ARTICLES_TO_CHECK + 1; i++) {
+                LOGGER.info("Remembering title of the article Nr: " + i);
+                newsTitlesMobile.add(mobileHomePage.getArticleTitle(i));
             }
+            LOGGER.info("Checking that each of the first 5 articles on main page had same titles on desktop and mobile.");
             boolean firstFiveArticlesMatch = true;
-            for (int i = 0; i < ARTICLES_TO_CHECK; i++) {
-                if (!newsTitlesDesktop.get(i).equals(newsTitlesMobile.get(i))) {
+            for (int i = 1; i <= ARTICLES_TO_CHECK; i++) {
+                LOGGER.info("Comparing titles of the article Nr: " + i);
+                if (!newsTitlesDesktop.get(i-1).equals(newsTitlesMobile.get(i-1))) {
+                    LOGGER.info("Found unequal article title.");
                     firstFiveArticlesMatch = false;
                     break;
                 }
             }
-            LOGGER.info("First 5 articles don't match, checking that first desktop article is among 2nd-6th articles of mobile.");
             if (!firstFiveArticlesMatch) {
+                LOGGER.info("First 5 articles don't match, checking that first desktop article is among 2nd-6th articles of mobile.");
                 boolean articleIsPresent = false;
-                for (int i = 0; i < 5; i++) {
-                    if (newsTitlesDesktop.get(0).equals(newsTitlesMobile.get(i + 1))) {
+                for (int i = 1; i <= 5; i++) {
+                    int mobileArticleNumber = i+1;
+                    LOGGER.info("Comapring title of first desktop article with title of " + mobileArticleNumber + " mobile article.");
+                    if (newsTitlesDesktop.get(0).equals(newsTitlesMobile.get(i))) {
+                        LOGGER.info("Article titles match.");
                         articleIsPresent = true;
                         break;
                     }
                 }
                 if (!articleIsPresent) {
+                    LOGGER.info("Title of first desktop article wasn't present among 2nd-6th articles of mobile.");
                     break;
                 }
                 newsTitlesDesktop = new ArrayList<String>();
                 newsTitlesMobile = new ArrayList<String>();
             } else {
+                LOGGER.info("Title check was OK.");
                 titleCheckIsOk = true;
                 break;
             }
         }
         Assert.assertTrue("First 5 title check on main pages failed.", titleCheckIsOk);
 
-        int commentCount = 0;
+        int desktopArticleCommentCount, mobileArticleCommentCount;
         boolean CommentCheckIsOk;
+
         LOGGER.info("Checking that first 5 articles have the same number of comments on desktop and mobile.");
-        for (int i = 0; i < ARTICLES_TO_CHECK; i++) {
+        for (int i = 1; i <= ARTICLES_TO_CHECK; i++) {
             CommentCheckIsOk = false;
             LOGGER.info("Trying up to 5 times to compare comment count for article number: " + i);
-            for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
+            for (int compareTryCount = 1; compareTryCount <= 5; compareTryCount++) {
                 LOGGER.info("Performing try number: " + compareTryCount);
-                LOGGER.info("Openning desktop.");
-                driver.get(DESKTOP_PAGE);
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(newsTitlesDesktop.get(i))));
-                if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                    element = element.findElement(FOLLOWING_SIBLING);
-                    elementText = element.getText();
-                    if(elementText.lastIndexOf('(') < 0 && elementText.lastIndexOf(')') < 0) {
-                        commentCount = 0;
-                    } else {
-                        commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    }
-                } else {
-                    commentCount = 0;
-                }
-                LOGGER.info("Openning mobile.");
-                driver.get(MOBILE_PAGE);
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(newsTitlesDesktop.get(i))));
-                if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                    element = element.findElement(FOLLOWING_SIBLING);
-                    elementText = element.getText();
-                    if(elementText.lastIndexOf('(') < 0 && elementText.lastIndexOf(')') < 0) {
-                        if(commentCount == 0) {
-                            CommentCheckIsOk = true;
-                            break;
-                        }
-                    }
-                    if(commentCount == Integer.parseInt(elementText.substring(1, elementText.length() - 1))) {
-                        CommentCheckIsOk = true;
-                        break;
-                    }
-                } else {
-                    if(commentCount == 0) {
-                        CommentCheckIsOk = true;
-                        break;
-                    }
+                LOGGER.info("Opening desktop home page.");
+                baseFunctions.openUrl(DESKTOP_PAGE_URL);
+                DesktopHomePage desktopHomePage = new DesktopHomePage(baseFunctions);
+                LOGGER.info("Getting article's comment count.");
+                desktopArticleCommentCount = desktopHomePage.getCommentCount(newsTitlesDesktop.get(i-1));
+                LOGGER.info("Opening mobile home page.");
+                baseFunctions.openUrl(MOBILE_PAGE_URL);
+                MobileHomePage mobileHomePage = new MobileHomePage(baseFunctions);
+                LOGGER.info("Getting article's comment count.");
+                mobileArticleCommentCount = mobileHomePage.getCommentCount(newsTitlesDesktop.get(i-1));
+                if(desktopArticleCommentCount == mobileArticleCommentCount) {
+                    CommentCheckIsOk = true;
+                    break;
                 }
             }
-            Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
+            Assert.assertTrue("Comment count isn't same for article Nr: " + i, CommentCheckIsOk);
         }
 
         String urlForPreviousPage;
+        int homePageCommentCount, articlePageCommentCount, commentPageCommentCount;
 
         LOGGER.info("Checking each article inside article view and comment section. Desktop version.");
-        for (int i = 0; i < ARTICLES_TO_CHECK; i++) {
+        for (int i = 1; i <= ARTICLES_TO_CHECK; i++) {
             LOGGER.info("Checking article number: " + i);
-            LOGGER.info("Openning desktop.");
-            driver.get(DESKTOP_PAGE);
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(newsTitlesDesktop.get(i)))).click();
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(ARTICLE_TITLE_DESKTOP));
-            elementText = element.getText();
-            Assert.assertTrue("Title inside news isn't same.", elementText.equals(newsTitlesDesktop.get(i)));
+            LOGGER.info("Opening desktop home page.");
+            baseFunctions.openUrl(DESKTOP_PAGE_URL);
+            DesktopHomePage desktopHomePage = new DesktopHomePage(baseFunctions);
+            LOGGER.info("Clicking on article title.");
+            desktopHomePage.clickArticleByTitle(newsTitlesDesktop.get(i - 1));
+            DesktopArticlePage desktopArticlePage = new DesktopArticlePage(baseFunctions);
+            LOGGER.info("Checking article title on article page.");
+            String articleText = desktopArticlePage.getTitle();
+            Assert.assertEquals("Title inside news isn't same.", newsTitlesDesktop.get(i - 1), articleText);
 
             CommentCheckIsOk = false;
             LOGGER.info("Trying up to 5 times to compare comment count on main page and inside article view (desktop).");
             for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
                 LOGGER.info("Performing try number: " + compareTryCount);
-                LOGGER.info("Openning desktop.");
-                driver.get(DESKTOP_PAGE);
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(newsTitlesDesktop.get(i))));
-                if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                    element = element.findElement(FOLLOWING_SIBLING);
-                    elementText = element.getText();
-                    if (elementText.lastIndexOf('(') < 0 && elementText.lastIndexOf(')') < 0) {
-                        commentCount = 0;
-                    } else {
-                        commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    }
-                } else {
-                    commentCount = 0;
-                }
-                wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(newsTitlesDesktop.get(i)))).click();
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(ARTICLE_TITLE_DESKTOP));
-                if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                    element = element.findElement(FOLLOWING_SIBLING);
-                    elementText = element.getText();
-                    if(Integer.parseInt(elementText.substring(1, elementText.length() - 1)) == commentCount) {
-                        CommentCheckIsOk = true;
-                        break;
-                    }
-                } else {
-                    if(commentCount == 0) {
-                        CommentCheckIsOk = true;
-                        break;
-                    }
+                LOGGER.info("Opening desktop home page.");
+                baseFunctions.openUrl(DESKTOP_PAGE_URL);
+                desktopHomePage = new DesktopHomePage(baseFunctions);
+                LOGGER.info("Getting article's comment count.");
+                homePageCommentCount = desktopHomePage.getCommentCount(newsTitlesDesktop.get(i - 1));
+                LOGGER.info("Clicking on article title.");
+                desktopHomePage.clickArticleByTitle(newsTitlesDesktop.get(i - 1));
+                desktopArticlePage = new DesktopArticlePage(baseFunctions);
+                articlePageCommentCount = desktopArticlePage.getCommentCount();
+                if (homePageCommentCount == articlePageCommentCount) {
+                    CommentCheckIsOk = true;
+                    break;
                 }
             }
             Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
 
-            if(commentCount != 0) {
-                LOGGER.info("Comments are present, checking comment section of the article (desktop).");
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(ARTICLE_TITLE_DESKTOP));
-                element = element.findElement(FOLLOWING_SIBLING);
-                urlForPreviousPage = driver.getCurrentUrl();
-                element.click();
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-                elementText = element.getText();
-                if(newsTitlesDesktop.get(i).lastIndexOf(':') == elementText.lastIndexOf(':')) {
-                    Assert.assertTrue("Title inside news comments isn't same:\n" + element.getText() + "\n vs \n" + newsTitlesDesktop.get(i), element.getText().equals(newsTitlesDesktop.get(i)));
-                } else {
-                    String titleWithoutCommentPart = element.getText().substring(0, elementText.lastIndexOf(':'));
-                    Assert.assertTrue("Title inside news comments isn't same:\n" + titleWithoutCommentPart + "\n vs \n" + newsTitlesDesktop.get(i), titleWithoutCommentPart.equals(newsTitlesDesktop.get(i)));
-                }
-                driver.get(urlForPreviousPage);
-
-                CommentCheckIsOk = false;
-                LOGGER.info("Trying up to 5 times to compare comment count inside article view and comment section (desktop).");
-                for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
-                    LOGGER.info("Performing try number: " + compareTryCount);
-                    int commentCountReg = 0;
-                    int commentCountAnon = 0;
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(ARTICLE_TITLE_DESKTOP));
-                    element = element.findElement(FOLLOWING_SIBLING);
-                    elementText = element.getText();
-                    commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    urlForPreviousPage = driver.getCurrentUrl();
-                    element.click();
-                    if(driver.findElements(REGISTERED_COMMENTS).size() > 0) {
-                        element = wait.until(ExpectedConditions.presenceOfElementLocated(REGISTERED_COMMENTS));
-                        elementText = element.getText();
-                        commentCountReg = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    }
-                    if(driver.findElements(ANONYMOUS_COMMENTS).size() > 0) {
-                        element = wait.until(ExpectedConditions.presenceOfElementLocated(ANONYMOUS_COMMENTS));
-                        elementText = element.getText();
-                        commentCountAnon = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    }
-                    if(commentCount == commentCountReg + commentCountAnon) {
-                        CommentCheckIsOk = true;
-                        break;
-                    } else {
-                        driver.get(urlForPreviousPage);
-                    }
-                }
-                Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
-            } else {
-                LOGGER.info("Comments are not present, checking comment section of the article (desktop).");
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//a[contains(@class, 'comment-add-form-listing-url-registered')]")));
-                element.click();
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-                elementText = element.getText();
-                Assert.assertTrue("Title inside news comments isn't same:\n" + elementText + "\n vs \n" + ARTICLE_FOR_TEST, elementText.equals(ARTICLE_FOR_TEST));
-                int commentCountReg = 0;
-                int commentCountAnon = 0;
-                if(driver.findElements(REGISTERED_COMMENTS).size() > 0) {
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(REGISTERED_COMMENTS));
-                    elementText = element.getText();
-                    commentCountReg = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-                if(driver.findElements(ANONYMOUS_COMMENTS).size() > 0) {
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(ANONYMOUS_COMMENTS));
-                    elementText = element.getText();
-                    commentCountAnon = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-                Assert.assertTrue("Comment count isn't zero.", commentCount == commentCountReg + commentCountAnon);
+            urlForPreviousPage = baseFunctions.getCurrentUrl();
+            LOGGER.info("Opening article comment page.");
+            desktopArticlePage.goToArticleComments();
+            DesktopCommentPage desktopCommentPage = new DesktopCommentPage(baseFunctions);
+            LOGGER.info("Checking article title on comment page.");
+            articleText = desktopCommentPage.getTitle();
+            //TO DO - Extracting text about comments in title.
+            if(newsTitlesDesktop.get(i - 1).lastIndexOf(':') != articleText.lastIndexOf(':')) {
+                articleText = articleText.substring(0, articleText.lastIndexOf(':'));
             }
+            Assert.assertEquals("Title on comment page isn't same.", newsTitlesDesktop.get(i - 1), articleText);
+            CommentCheckIsOk = false;
+            LOGGER.info("Trying up to 5 times to compare comment count on article view page and on comment page (desktop).");
+            for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
+                LOGGER.info("Performing try number: " + compareTryCount);
+                LOGGER.info("Opening article view page.");
+                baseFunctions.openUrl(urlForPreviousPage);
+                desktopArticlePage = new DesktopArticlePage(baseFunctions);
+                LOGGER.info("Getting article's comment count.");
+                articlePageCommentCount = desktopArticlePage.getCommentCount();
+                LOGGER.info("Opening article comment page.");
+                desktopArticlePage.goToArticleComments();
+                desktopCommentPage = new DesktopCommentPage(baseFunctions);
+                commentPageCommentCount = desktopCommentPage.getAnonymousComments() + desktopCommentPage.getRegisteredComments();
+                if (articlePageCommentCount == commentPageCommentCount) {
+                    CommentCheckIsOk = true;
+                    break;
+                }
+            }
+            Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
         }
 
-        LOGGER.info("Check each article inside article view and comment section. Mobile version.");
-        for (int i = 0; i < ARTICLES_TO_CHECK; i++) {
+        LOGGER.info("Checking each article inside article view and comment section. Mobile version.");
+        for (int i = 1; i <= ARTICLES_TO_CHECK; i++) {
             LOGGER.info("Checking article number: " + i);
-            LOGGER.info("Openning mobile.");
-            driver.get(MOBILE_PAGE);
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(newsTitlesDesktop.get(i)))).click();
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-            elementText = element.getText();
-            Assert.assertTrue("Title inside news isn't same.", elementText.equals(newsTitlesDesktop.get(i)));
+            LOGGER.info("Opening mobile home page.");
+            baseFunctions.openUrl(MOBILE_PAGE_URL);
+            MobileHomePage mobileHomePage = new MobileHomePage(baseFunctions);
+            LOGGER.info("Clicking on article title.");
+            mobileHomePage.clickArticleByTitle(newsTitlesDesktop.get(i - 1));
+            MobileArticlePage mobileArticlePage = new MobileArticlePage(baseFunctions);
+            LOGGER.info("Checking article title on article page.");
+            Assert.assertEquals("Title inside news isn't same.", newsTitlesDesktop.get(i - 1), mobileArticlePage.getTitle());
 
             CommentCheckIsOk = false;
             LOGGER.info("Trying up to 5 times to compare comment count on main page and inside article view (mobile).");
             for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
                 LOGGER.info("Performing try number: " + compareTryCount);
-                LOGGER.info("Openning mobile.");
-                driver.get(MOBILE_PAGE);
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(newsTitlesDesktop.get(i))));
-                if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                    element = element.findElement(FOLLOWING_SIBLING);
-                    elementText = element.getText();
-                    if (elementText.lastIndexOf('(') < 0 && elementText.lastIndexOf(')') < 0) {
-                        commentCount = 0;
-                    } else {
-                        commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    }
-                } else {
-                    commentCount = 0;
-                }
-                wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(newsTitlesDesktop.get(i)))).click();
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-                if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                    element = element.findElement(FOLLOWING_SIBLING);
-                    elementText = element.getText();
-                    if(Integer.parseInt(elementText.substring(1, elementText.length() - 1)) == commentCount) {
-                        CommentCheckIsOk = true;
-                        break;
-                    }
-                } else {
-                    if(commentCount == 0) {
-                        CommentCheckIsOk = true;
-                        break;
-                    }
+                LOGGER.info("Opening mobile home page.");
+                baseFunctions.openUrl(MOBILE_PAGE_URL);
+                LOGGER.info("Getting article's comment count.");
+                homePageCommentCount = mobileHomePage.getCommentCount(newsTitlesDesktop.get(i - 1));
+                LOGGER.info("Clicking on article title.");
+                mobileHomePage.clickArticleByTitle(newsTitlesDesktop.get(i - 1));
+                mobileArticlePage = new MobileArticlePage(baseFunctions);
+                articlePageCommentCount = mobileArticlePage.getCommentCount();
+                if (homePageCommentCount == articlePageCommentCount) {
+                    CommentCheckIsOk = true;
+                    break;
                 }
             }
             Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
 
-            if(commentCount != 0) {
-                LOGGER.info("Comments are present, check comment section of the article (mobile).");
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-                element = element.findElement(FOLLOWING_SIBLING);
-                urlForPreviousPage = driver.getCurrentUrl();
-                element.click();
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1/a/span[@class='text']")));
-                elementText = element.getText();
-                Assert.assertTrue("Title inside news comments isn't same:\n" + elementText + "\n vs \n" + newsTitlesDesktop.get(i), element.getText().equals(newsTitlesDesktop.get(i)));
-                driver.get(urlForPreviousPage);
-
-                CommentCheckIsOk = false;
-                LOGGER.info("Trying up to 5 times to compare comment count inside article view and comment section (mobile).");
-                for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
-                    LOGGER.info("Performing try number: " + compareTryCount);
-                    int commentCountReg = 0;
-                    int commentCountAnon = 0;
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[@class='article-title']/h1")));
-                    element = element.findElement(FOLLOWING_SIBLING);
-                    elementText = element.getText();
-                    commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    urlForPreviousPage = driver.getCurrentUrl();
-                    element.click();
-                    if(driver.findElements(REGISTERED_COMMENTS).size() > 0) {
-                        element = wait.until(ExpectedConditions.presenceOfElementLocated(REGISTERED_COMMENTS));
-                        elementText = element.getText();
-                        commentCountReg = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    }
-                    if(driver.findElements(ANONYMOUS_COMMENTS).size() > 0) {
-                        element = wait.until(ExpectedConditions.presenceOfElementLocated(ANONYMOUS_COMMENTS));
-                        elementText = element.getText();
-                        commentCountAnon = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                    }
-                    if(commentCount == commentCountReg + commentCountAnon) {
-                        CommentCheckIsOk = true;
-                        break;
-                    } else {
-                        driver.get(urlForPreviousPage);
-                    }
+            urlForPreviousPage = baseFunctions.getCurrentUrl();
+            LOGGER.info("Opening article comment page.");
+            mobileArticlePage.goToArticleComments();
+            MobileCommentPage mobileCommentPage = new MobileCommentPage(baseFunctions);
+            LOGGER.info("Checking article title on comment page.");
+            Assert.assertEquals("Title on comment page isn't same.", newsTitlesDesktop.get(i - 1), mobileCommentPage.getTitle());
+            CommentCheckIsOk = false;
+            LOGGER.info("Trying up to 5 times to compare comment count on article view page and on comment page (mobile).");
+            for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
+                LOGGER.info("Performing try number: " + compareTryCount);
+                LOGGER.info("Opening article view page.");
+                baseFunctions.openUrl(urlForPreviousPage);
+                mobileArticlePage = new MobileArticlePage(baseFunctions);
+                LOGGER.info("Getting article's comment count.");
+                articlePageCommentCount = mobileArticlePage.getCommentCount();
+                LOGGER.info("Opening article comment page.");
+                mobileArticlePage.goToArticleComments();
+                mobileCommentPage = new MobileCommentPage(baseFunctions);
+                commentPageCommentCount = mobileCommentPage.getAnonymousComments() + mobileCommentPage.getRegisteredComments();
+                if (articlePageCommentCount == commentPageCommentCount) {
+                    CommentCheckIsOk = true;
+                    break;
                 }
-                Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
-            } else {
-                LOGGER.info("Comments are not present, checking comment section of the article (mobile).");
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//a[contains(@class, 'social-icon-comment')]")));
-                element.click();
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-                elementText = element.getText();
-                Assert.assertTrue("Title inside news comments isn't same:\n" + elementText + "\n vs \n" + ARTICLE_FOR_TEST, elementText.equals(ARTICLE_FOR_TEST));
-                int commentCountReg = 0;
-                int commentCountAnon = 0;
-                if(driver.findElements(REGISTERED_COMMENTS).size() > 0) {
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(REGISTERED_COMMENTS));
-                    elementText = element.getText();
-                    commentCountReg = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-                if(driver.findElements(ANONYMOUS_COMMENTS).size() > 0) {
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(ANONYMOUS_COMMENTS));
-                    elementText = element.getText();
-                    commentCountAnon = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-                Assert.assertTrue("Comment count isn't zero.", commentCount == commentCountReg + commentCountAnon);
             }
+            Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
         }
-        driver.quit();
     }
 
     @Test
     public void specificArticleTest() {
-        System.setProperty("webdriver.gecko.driver", "C:/geckodriver.exe");
-        WebDriver driver = new FirefoxDriver();
-        WebDriverWait wait = new WebDriverWait(driver, 10);
-        WebElement element;
-        String elementText;
-        int commentCount = 0;
+        int desktopArticleCommentCount, mobileArticleCommentCount, articlePageCommentCount, commentPageCommentCount;
         boolean CommentCheckIsOk = false;
-        JavascriptExecutor jsx = (JavascriptExecutor)driver;
-
-        for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
-            driver.get(DESKTOP_PAGE);
-            jsx.executeScript("window.scrollTo(0, document.body.scrollHeight)", "");
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(ARTICLE_FOR_TEST)));
-            if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                element = element.findElement(FOLLOWING_SIBLING);
-                elementText = element.getText();
-                if(elementText.lastIndexOf('(') < 0 && elementText.lastIndexOf(')') < 0) {
-                    commentCount = 0;
-                } else {
-                    commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-            } else {
-                commentCount = 0;
-            }
-            driver.get(MOBILE_PAGE);
-            jsx.executeScript("window.scrollTo(0, document.body.scrollHeight)", "");
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(ARTICLE_FOR_TEST)));
-            if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                element = element.findElement(FOLLOWING_SIBLING);
-                elementText = element.getText();
-                if(elementText.lastIndexOf('(') < 0 && elementText.lastIndexOf(')') < 0) {
-                    if(commentCount == 0) {
-                        CommentCheckIsOk = true;
-                        break;
-                    }
-                }
-                if(commentCount == Integer.parseInt(elementText.substring(1, elementText.length() - 1))) {
-                    CommentCheckIsOk = true;
-                    break;
-                }
-            } else {
-                if(commentCount == 0) {
-                    CommentCheckIsOk = true;
-                    break;
-                }
+        LOGGER.info("Checking that the article has the same number of comments on desktop and mobile.");
+        LOGGER.info("Trying up to 5 times to compare comment count for article.");
+        for (int compareTryCount = 1; compareTryCount <= 5; compareTryCount++) {
+            LOGGER.info("Performing try number: " + compareTryCount);
+            LOGGER.info("Opening desktop home page.");
+            baseFunctions.openUrl(DESKTOP_PAGE_URL);
+            baseFunctions.scrollToBottom();
+            DesktopHomePage desktopHomePage = new DesktopHomePage(baseFunctions);
+            LOGGER.info("Getting article's comment count.");
+            desktopArticleCommentCount = desktopHomePage.getCommentCount(ARTICLE_FOR_TEST);
+            LOGGER.info("Opening mobile home page.");
+            baseFunctions.openUrl(MOBILE_PAGE_URL);
+            baseFunctions.scrollToBottom();
+            MobileHomePage mobileHomePage = new MobileHomePage(baseFunctions);
+            LOGGER.info("Getting article's comment count.");
+            mobileArticleCommentCount = mobileHomePage.getCommentCount(ARTICLE_FOR_TEST);
+            if(desktopArticleCommentCount == mobileArticleCommentCount) {
+                CommentCheckIsOk = true;
+                break;
             }
         }
         Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
 
         String urlForPreviousPage;
 
-        //Check article inside article view and comment section. Desktop version.
-        driver.get(DESKTOP_PAGE);
-        jsx.executeScript("window.scrollTo(0, document.body.scrollHeight)", "");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(ARTICLE_FOR_TEST))).click();
-        element = wait.until(ExpectedConditions.presenceOfElementLocated(ARTICLE_TITLE_DESKTOP));
-        elementText = element.getText();
-        Assert.assertTrue("Title inside news isn't same.", elementText.equals(ARTICLE_FOR_TEST));
+        LOGGER.info("Checking article inside article view and comment section. Desktop version.");
+        LOGGER.info("Opening desktop home page.");
+        baseFunctions.openUrl(DESKTOP_PAGE_URL);
+        baseFunctions.scrollToBottom();
+        DesktopHomePage desktopHomePage = new DesktopHomePage(baseFunctions);
+        LOGGER.info("Clicking on article title.");
+        desktopHomePage.clickArticleByTitle(ARTICLE_FOR_TEST);
+        DesktopArticlePage desktopArticlePage = new DesktopArticlePage(baseFunctions);
+        LOGGER.info("Checking article title on article page.");
+        String articleText = desktopArticlePage.getTitle();
+        Assert.assertEquals("Title inside news isn't same.", ARTICLE_FOR_TEST, articleText);
 
         CommentCheckIsOk = false;
-        //Try up to 5 times to compare comment count on main page and inside article view (desktop).
+        LOGGER.info("Trying up to 5 times to compare comment count on main page and inside article view (desktop).");
         for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
-            driver.get(DESKTOP_PAGE);
-            jsx.executeScript("window.scrollTo(0, document.body.scrollHeight)", "");
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(ARTICLE_FOR_TEST)));
-            if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                element = element.findElement(FOLLOWING_SIBLING);
-                elementText = element.getText();
-                if (elementText.lastIndexOf('(') < 0 && elementText.lastIndexOf(')') < 0) {
-                    commentCount = 0;
-                } else {
-                    commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-            } else {
-                commentCount = 0;
-            }
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(ARTICLE_FOR_TEST))).click();
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(ARTICLE_TITLE_DESKTOP));
-            if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                element = element.findElement(FOLLOWING_SIBLING);
-                elementText = element.getText();
-                if(Integer.parseInt(elementText.substring(1, elementText.length() - 1)) == commentCount) {
-                    CommentCheckIsOk = true;
-                    break;
-                }
-            } else {
-                if(commentCount == 0) {
-                    CommentCheckIsOk = true;
-                    break;
-                }
+            LOGGER.info("Performing try number: " + compareTryCount);
+            LOGGER.info("Opening desktop home page.");
+            baseFunctions.openUrl(DESKTOP_PAGE_URL);
+            baseFunctions.scrollToBottom();
+            desktopHomePage = new DesktopHomePage(baseFunctions);
+            LOGGER.info("Getting article's comment count.");
+            desktopArticleCommentCount = desktopHomePage.getCommentCount(ARTICLE_FOR_TEST);
+            LOGGER.info("Clicking on article title.");
+            desktopHomePage.clickArticleByTitle(ARTICLE_FOR_TEST);
+            desktopArticlePage = new DesktopArticlePage(baseFunctions);
+            articlePageCommentCount = desktopArticlePage.getCommentCount();
+            if (desktopArticleCommentCount == articlePageCommentCount) {
+                CommentCheckIsOk = true;
+                break;
             }
         }
         Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
 
-        //If comments are present, check comment section of the article (desktop).
-        if(commentCount != 0) {
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(ARTICLE_TITLE_DESKTOP));
-            element = element.findElement(FOLLOWING_SIBLING);
-            urlForPreviousPage = driver.getCurrentUrl();
-            element.click();
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-            elementText = element.getText();
-            if(ARTICLE_FOR_TEST.lastIndexOf(':') == elementText.lastIndexOf(':')) {
-                Assert.assertTrue("Title inside news comments isn't same:\n" + element.getText() + "\n vs \n" + ARTICLE_FOR_TEST, element.getText().equals(ARTICLE_FOR_TEST));
-            } else {
-                String titleWithoutCommentPart = element.getText().substring(0, elementText.lastIndexOf(':'));
-                Assert.assertTrue("Title inside news comments isn't same:\n" + titleWithoutCommentPart + "\n vs \n" + ARTICLE_FOR_TEST, titleWithoutCommentPart.equals(ARTICLE_FOR_TEST));
-            }
-            driver.get(urlForPreviousPage);
-
-            CommentCheckIsOk = false;
-            //Try up to 5 times to compare comment count inside article view and comment section (desktop).
-            for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
-                int commentCountReg = 0;
-                int commentCountAnon = 0;
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(ARTICLE_TITLE_DESKTOP));
-                element = element.findElement(FOLLOWING_SIBLING);
-                elementText = element.getText();
-                commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                urlForPreviousPage = driver.getCurrentUrl();
-                element.click();
-                if(driver.findElements(REGISTERED_COMMENTS).size() > 0) {
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(REGISTERED_COMMENTS));
-                    elementText = element.getText();
-                    commentCountReg = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-                if(driver.findElements(ANONYMOUS_COMMENTS).size() > 0) {
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(ANONYMOUS_COMMENTS));
-                    elementText = element.getText();
-                    commentCountAnon = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-                if(commentCount == commentCountReg + commentCountAnon) {
-                    CommentCheckIsOk = true;
-                    break;
-                } else {
-                    driver.get(urlForPreviousPage);
-                }
-            }
-            Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
-        } else {
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//a[contains(@class, 'comment-add-form-listing-url-registered')]")));
-            element.click();
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-            elementText = element.getText();
-            Assert.assertTrue("Title inside news comments isn't same:\n" + elementText + "\n vs \n" + ARTICLE_FOR_TEST, elementText.equals(ARTICLE_FOR_TEST));
-            int commentCountReg = 0;
-            int commentCountAnon = 0;
-            if(driver.findElements(REGISTERED_COMMENTS).size() > 0) {
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(REGISTERED_COMMENTS));
-                elementText = element.getText();
-                commentCountReg = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-            }
-            if(driver.findElements(ANONYMOUS_COMMENTS).size() > 0) {
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(ANONYMOUS_COMMENTS));
-                elementText = element.getText();
-                commentCountAnon = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-            }
-            Assert.assertTrue("Comment count isn't zero.", commentCount == commentCountReg + commentCountAnon);
+        urlForPreviousPage = baseFunctions.getCurrentUrl();
+        LOGGER.info("Opening article comment page.");
+        desktopArticlePage.goToArticleComments();
+        DesktopCommentPage desktopCommentPage = new DesktopCommentPage(baseFunctions);
+        LOGGER.info("Checking article title on comment page.");
+        articleText = desktopCommentPage.getTitle();
+        //TO DO - Extracting text about comments in title.
+        if(ARTICLE_FOR_TEST.lastIndexOf(':') != articleText.lastIndexOf(':')) {
+            articleText = articleText.substring(0, articleText.lastIndexOf(':'));
         }
-
-        //Check article inside article view and comment section. Mobile version.
-        driver.get(MOBILE_PAGE);
-        jsx.executeScript("window.scrollTo(0, document.body.scrollHeight)", "");
-        element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(ARTICLE_FOR_TEST)));
-        jsx.executeScript("window.scrollTo(0, document.body.scrollHeight)", "");
-        element.click();
-        element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-        elementText = element.getText();
-        Assert.assertTrue("Title inside news isn't same.", elementText.equals(ARTICLE_FOR_TEST));
-
+        Assert.assertEquals("Title on comment page isn't same.", ARTICLE_FOR_TEST, articleText);
         CommentCheckIsOk = false;
-        //Try up to 5 times to compare comment count on main page and inside article view (mobile).
+        LOGGER.info("Trying up to 5 times to compare comment count on article view page and on comment page (desktop).");
         for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
-            driver.get(MOBILE_PAGE);
-            jsx.executeScript("window.scrollTo(0, document.body.scrollHeight)", "");
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(ARTICLE_FOR_TEST)));
-            if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                element = element.findElement(FOLLOWING_SIBLING);
-                elementText = element.getText();
-                if (elementText.lastIndexOf('(') < 0 && elementText.lastIndexOf(')') < 0) {
-                    commentCount = 0;
-                } else {
-                    commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-            } else {
-                commentCount = 0;
-            }
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(ARTICLE_FOR_TEST))).click();
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-            if (element.findElements(FOLLOWING_SIBLING).size() != 0) {
-                element = element.findElement(FOLLOWING_SIBLING);
-                elementText = element.getText();
-                if(Integer.parseInt(elementText.substring(1, elementText.length() - 1)) == commentCount) {
-                    CommentCheckIsOk = true;
-                    break;
-                }
-            } else {
-                if(commentCount == 0) {
-                    CommentCheckIsOk = true;
-                    break;
-                }
+            LOGGER.info("Performing try number: " + compareTryCount);
+            LOGGER.info("Opening article view page.");
+            baseFunctions.openUrl(urlForPreviousPage);
+            desktopArticlePage = new DesktopArticlePage(baseFunctions);
+            LOGGER.info("Getting article's comment count.");
+            articlePageCommentCount = desktopArticlePage.getCommentCount();
+            LOGGER.info("Opening article comment page.");
+            desktopArticlePage.goToArticleComments();
+            desktopCommentPage = new DesktopCommentPage(baseFunctions);
+            commentPageCommentCount = desktopCommentPage.getAnonymousComments() + desktopCommentPage.getRegisteredComments();
+            if (articlePageCommentCount == commentPageCommentCount) {
+                CommentCheckIsOk = true;
+                break;
             }
         }
         Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
 
-        //If comments are present, check comment section of the article (mobile).
-        if(commentCount != 0) {
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-            element = element.findElement(FOLLOWING_SIBLING);
-            urlForPreviousPage = driver.getCurrentUrl();
-            element.click();
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1/a/span[@class='text']")));
-            elementText = element.getText();
-            Assert.assertTrue("Title inside news comments isn't same:\n" + elementText + "\n vs \n" + ARTICLE_FOR_TEST, element.getText().equals(ARTICLE_FOR_TEST));
-            driver.get(urlForPreviousPage);
+        LOGGER.info("Checking article inside article view and comment section. Mobile version.");
+        LOGGER.info("Opening mobile home page.");
+        baseFunctions.openUrl(MOBILE_PAGE_URL);
+        baseFunctions.scrollToBottom();
+        MobileHomePage mobileHomePage = new MobileHomePage(baseFunctions);
+        LOGGER.info("Clicking on article title.");
+        mobileHomePage.clickArticleByTitle(ARTICLE_FOR_TEST);
+        MobileArticlePage mobileArticlePage = new MobileArticlePage(baseFunctions);
+        LOGGER.info("Checking article title on article page.");
+        Assert.assertEquals("Title inside news isn't same.", ARTICLE_FOR_TEST, mobileArticlePage.getTitle());
 
-            CommentCheckIsOk = false;
-            //Try up to 5 times to compare comment count inside article view and comment section (mobile).
-            for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
-                int commentCountReg = 0;
-                int commentCountAnon = 0;
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[@class='article-title']/h1")));
-                element = element.findElement(FOLLOWING_SIBLING);
-                elementText = element.getText();
-                commentCount = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                urlForPreviousPage = driver.getCurrentUrl();
-                element.click();
-                if(driver.findElements(REGISTERED_COMMENTS).size() > 0) {
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(REGISTERED_COMMENTS));
-                    elementText = element.getText();
-                    commentCountReg = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-                if(driver.findElements(ANONYMOUS_COMMENTS).size() > 0) {
-                    element = wait.until(ExpectedConditions.presenceOfElementLocated(ANONYMOUS_COMMENTS));
-                    elementText = element.getText();
-                    commentCountAnon = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-                }
-                if(commentCount == commentCountReg + commentCountAnon) {
-                    CommentCheckIsOk = true;
-                    break;
-                } else {
-                    driver.get(urlForPreviousPage);
-                }
+        CommentCheckIsOk = false;
+        LOGGER.info("Trying up to 5 times to compare comment count on main page and inside article view (mobile).");
+        for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
+            LOGGER.info("Performing try number: " + compareTryCount);
+            LOGGER.info("Opening mobile home page.");
+            baseFunctions.openUrl(MOBILE_PAGE_URL);
+            baseFunctions.scrollToBottom();
+            LOGGER.info("Getting article's comment count.");
+            mobileArticleCommentCount = mobileHomePage.getCommentCount(ARTICLE_FOR_TEST);
+            LOGGER.info("Clicking on article title.");
+            mobileHomePage.clickArticleByTitle(ARTICLE_FOR_TEST);
+            mobileArticlePage = new MobileArticlePage(baseFunctions);
+            articlePageCommentCount = mobileArticlePage.getCommentCount();
+            if (mobileArticleCommentCount == articlePageCommentCount) {
+                CommentCheckIsOk = true;
+                break;
             }
-            Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
-        } else {
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//a[contains(@class, 'social-icon-comment')]")));
-            element.click();
-            element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1")));
-            elementText = element.getText();
-            Assert.assertTrue("Title inside news comments isn't same:\n" + elementText + "\n vs \n" + ARTICLE_FOR_TEST, elementText.equals(ARTICLE_FOR_TEST));
-            int commentCountReg = 0;
-            int commentCountAnon = 0;
-            if(driver.findElements(REGISTERED_COMMENTS).size() > 0) {
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(REGISTERED_COMMENTS));
-                elementText = element.getText();
-                commentCountReg = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-            }
-            if(driver.findElements(ANONYMOUS_COMMENTS).size() > 0) {
-                element = wait.until(ExpectedConditions.presenceOfElementLocated(ANONYMOUS_COMMENTS));
-                elementText = element.getText();
-                commentCountAnon = Integer.parseInt(elementText.substring(1, elementText.length() - 1));
-            }
-            Assert.assertTrue("Comment count isn't zero.", commentCount == commentCountReg + commentCountAnon);
         }
-        driver.quit();
+        Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
+
+        urlForPreviousPage = baseFunctions.getCurrentUrl();
+        LOGGER.info("Opening article comment page.");
+        mobileArticlePage.goToArticleComments();
+        MobileCommentPage mobileCommentPage = new MobileCommentPage(baseFunctions);
+        LOGGER.info("Checking article title on comment page.");
+        Assert.assertEquals("Title on comment page isn't same.", ARTICLE_FOR_TEST, mobileCommentPage.getTitle());
+        CommentCheckIsOk = false;
+        LOGGER.info("Trying up to 5 times to compare comment count on article view page and on comment page (mobile).");
+        for (int compareTryCount = 0; compareTryCount < 5; compareTryCount++) {
+            LOGGER.info("Performing try number: " + compareTryCount);
+            LOGGER.info("Opening article view page.");
+            baseFunctions.openUrl(urlForPreviousPage);
+            mobileArticlePage = new MobileArticlePage(baseFunctions);
+            LOGGER.info("Getting article's comment count.");
+            articlePageCommentCount = mobileArticlePage.getCommentCount();
+            LOGGER.info("Opening article comment page.");
+            mobileArticlePage.goToArticleComments();
+            mobileCommentPage = new MobileCommentPage(baseFunctions);
+            commentPageCommentCount = mobileCommentPage.getAnonymousComments() + mobileCommentPage.getRegisteredComments();
+            if (articlePageCommentCount == commentPageCommentCount) {
+                CommentCheckIsOk = true;
+                break;
+            }
+        }
+        Assert.assertTrue("Comment count isn't same.", CommentCheckIsOk);
     }
-
 }
