@@ -12,7 +12,7 @@ public class MobileCommentPage {
 
     private static final Logger LOGGER = LogManager.getLogger(MobileCommentPage.class);
 
-    private static final By COMMENT_TITLE_BLOCK = By.id("//div[@class='comments-about-title'");
+    private static final By COMMENT_TITLE_BLOCK = By.xpath("//div[@class='comments-about-title']");
     private static final By TITLE = By.xpath("//h1[@class='comments-about-title-h1']");
     private static final By REGISTERED_COMMENT_COUNT = By.xpath("//a[contains(@class, 'comment-thread-switcher-list-a-reg')]/span");
     private static final By ANONYMOUS_COMMENT_COUNT = By.xpath("//a[contains(@class, 'comment-thread-switcher-list-a-anon')]/span");
