@@ -7,6 +7,8 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.firefox.FirefoxDriver;
 
+import java.util.List;
+
 public class BaseFunctions {
     private static final Logger LOGGER = LogManager.getLogger(BaseFunctions.class);
     WebDriver driver;
@@ -36,5 +38,10 @@ public class BaseFunctions {
     public void clickElement(By locator) {
         LOGGER.info("Clicking element.");
         driver.findElement(locator).click();
+    }
+
+    public List<WebElement> findElements(By locator) {
+        LOGGER.info("Finding elements.");
+        return driver.findElements(locator);
     }
 }
